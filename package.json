@@ -1,0 +1,48 @@
+{
+  "name": "perspectives",
+  "version": "0.0.1",
+  "description": "A game of perspectives.",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel index.html",
+    "dist": "parcel build index.html -d docs --public-url ./",
+    "build": "parcel build index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juanuys/perspectives.git"
+  },
+  "keywords": [
+    "gamedev"
+  ],
+  "author": "Juan Uys",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/juanuys/perspectives/issues"
+  },
+  "homepage": "https://github.com/juanuys/perspectives#readme",
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "controls-gui": "^2.0.0",
+    "controls-state": "^2.0.0",
+    "datauritoblob": "^1.0.0",
+    "detect-gpu": "^2.0.4",
+    "image-promise": "^7.0.1",
+    "orbit-controls": "^1.2.4",
+    "p-map": "^4.0.0",
+    "pretty-ms": "^7.0.1",
+    "regenerator-runtime": "^0.13.7",
+    "stats.js": "^0.17.0",
+    "three": "^0.122.0",
+    "three-pmrem": "^1.0.0",
+    "three-projected-material": "^1.1.0",
+    "touches": "^1.2.2"
+  },
+  "browserslist": [
+    "defaults"
+  ]
+}
