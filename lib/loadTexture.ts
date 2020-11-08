@@ -1,27 +1,23 @@
-// Taken from https://github.com/marcofugaro/threejs-modern-app/blob/master/src/lib/loadTexture.js
 import * as THREE from 'three'
-import loadImage from 'image-promise'
 
 export default async function loadTexture(url, options) {
-  const texture = new THREE.Texture()
-  texture.name = url
-  texture.encoding = options.encoding || THREE.LinearEncoding
-  setTextureParams(url, texture, options)
 
-  try {
-    const image = await loadImage(url, { crossorigin: 'anonymous' })
-
-    texture.image = image
-    texture.needsUpdate = true
-    if (options.renderer) {
-      // Force texture to be uploaded to GPU immediately,
-      // this will avoid "jank" on first rendered frame
-      options.renderer.initTexture(texture)
-    }
-    return texture
-  } catch (err) {
-    throw new Error(`Could not load texture ${url}`)
+  const loader = new THREE.TextureLoader()
+  function promiseLoader(url) {
+    return new Promise((resolve, reject) => {
+      loader.load(url, data=> resolve(data), null, reject)
+    })
   }
+  const texture = await promiseLoader(url)
+  // console.log(texture)
+  // setTextureParams(url, texture, options)
+
+  if (options.renderer) {
+    // Force texture to be uploaded to GPU immediately,
+    // this will avoid "jank" on first rendered frame
+    options.renderer.initTexture(texture)
+  }
+  return texture
 }
 
 function setTextureParams(url, texture, opt) {

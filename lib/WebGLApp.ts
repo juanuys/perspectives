@@ -1,12 +1,11 @@
 // Taken from https://github.com/marcofugaro/threejs-modern-app/blob/master/src/lib/WebGLApp.js
 import * as THREE from 'three'
-import createOrbitControls from 'orbit-controls'
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
 import createTouches from 'touches'
 import dataURIToBlob from 'datauritoblob'
 import Stats from 'stats.js'
 import State from 'controls-state'
 import wrapGUI from 'controls-gui'
-import { getGPUTier } from 'detect-gpu'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
 
@@ -45,7 +44,6 @@ export default class WebGLApp {
                     far = 100,
                     ...options
                 } = {}) {
-        console.log(options)
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: false,
@@ -68,6 +66,9 @@ export default class WebGLApp {
         // setup a basic camera
         this.camera = new THREE.PerspectiveCamera(fov, 1, near, far)
         // this.camera = new THREE.OrthographicCamera(-2, 2, 2, -2, near, far)
+        // this.camera.position.set(0, 5, 0)
+        // this.camera.position.set(5, 0, 0)
+        this.camera.position.set(0, 0, 5)
 
         this.scene = new THREE.Scene()
 
@@ -113,16 +114,11 @@ export default class WebGLApp {
 
         // set up a simple orbit controller
         if (options.orbitControls) {
-            this.orbitControls = createOrbitControls({
-                element: this.canvas,
-                parent: window,
-                distance: 4,
-                ...(options.orbitControls instanceof Object ? options.orbitControls : {}),
-            })
-
-            // move the camera position accordingly to the orgitcontrols options
-            this.camera.position.fromArray(this.orbitControls.position)
-            this.camera.lookAt(new THREE.Vector3().fromArray(this.orbitControls.target))
+            this.orbitControls = new OrbitControls(this.camera, this.canvas)
+            // this.orbitControls.enableDamping = true
+            this.orbitControls.minDistance = this.orbitControls.maxDistance = 5
+            this.orbitControls.maxAzimuthAngle = 0
+            this.orbitControls.minAzimuthAngle = 0
         }
 
         // Attach the Cannon physics engine
@@ -206,12 +202,6 @@ export default class WebGLApp {
     update = (dt, time) => {
         if (this.orbitControls) {
             this.orbitControls.update()
-
-            // reposition to orbit controls
-            this.camera.up.fromArray(this.orbitControls.up)
-            this.camera.position.fromArray(this.orbitControls.position)
-            this.#tmpTarget.fromArray(this.orbitControls.target)
-            this.camera.lookAt(this.#tmpTarget)
         }
 
         // recursively tell all child objects to update

@@ -4,7 +4,6 @@ import prettyMs from 'pretty-ms'
 import loadImage from 'image-promise'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import loadTexture from './loadTexture'
-import loadEnvMap from './loadEnvMap'
 
 class AssetManager {
   #queue = []
@@ -169,8 +168,6 @@ class AssetManager {
         })
       case 'json':
         return fetch(url).then(response => response.json())
-      case 'env-map':
-        return loadEnvMap(url, { renderer, ...options })
       case 'svg':
       case 'image':
         return loadImage(url, { crossorigin: 'anonymous' })
@@ -212,6 +209,5 @@ class AssetManager {
 
 // asset manager is a singleton, you can require it from
 // different files and use the same instance.
-// A plain js object would have worked just fine,
-// fucking java patterns
+// A plain js object would have worked just fine
 export default new AssetManager()

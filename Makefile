@@ -8,3 +8,6 @@ dist:
 
 run:
 	npm run start
+
+clean:
+	rm -rf dist docs .cache

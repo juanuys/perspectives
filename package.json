@@ -27,19 +27,17 @@
     "typescript": "^4.0.5"
   },
   "dependencies": {
+    "@tweenjs/tween.js": "^18.6.4",
     "controls-gui": "^2.0.0",
     "controls-state": "^2.0.0",
     "datauritoblob": "^1.0.0",
-    "detect-gpu": "^2.0.4",
     "image-promise": "^7.0.1",
-    "orbit-controls": "^1.2.4",
     "p-map": "^4.0.0",
     "pretty-ms": "^7.0.1",
     "regenerator-runtime": "^0.13.7",
     "stats.js": "^0.17.0",
     "three": "^0.122.0",
     "three-pmrem": "^1.0.0",
-    "three-projected-material": "^1.1.0",
     "touches": "^1.2.2"
   },
   "browserslist": [
