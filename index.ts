@@ -28,13 +28,15 @@ window.webgl = webgl
 webgl.canvas.style.visibility = 'hidden'
 
 // preload the texture
-const textureKey = assets.queue({
-    // url: imgs.charles,
-    url: imgs.astro,
-    type: 'texture',
+const textureKeys = Object.entries(imgs).map(([key, url]) => {
+    const textureKey = assets.queue({
+        url,
+        type: 'texture',
+    })
+    return textureKey
 })
 
-function makeCones(NUM_ELEMENTS: number, elements: THREE.Group) {
+function makeCones(NUM_ELEMENTS: number, elements: THREE.Group, textureKey) {
     for (let i = 0; i < NUM_ELEMENTS; i++) {
         // const geometry = new THREE.IcosahedronGeometry(random(0.1, 0.5))
         const geometry = new THREE.ConeGeometry(random(0.1, 0.5), random(1, 2), 8)
@@ -69,7 +71,7 @@ function makeCones(NUM_ELEMENTS: number, elements: THREE.Group) {
     }
 }
 
-function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, rotate: boolean = true) {
+function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rotate: boolean = true) {
     const cover = false
 
     // optimisation to calculate dimensions once
@@ -99,7 +101,8 @@ function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, rotate: boolean 
         if (i < NUM_ELEMENTS * 0.3) {
             element.position.x = random(-0.5, 0.5)
             element.position.y = random(-1.1, 0.5)
-            element.position.z = random(-0.3, 0.3)
+            // element.position.z = random(-0.3, 0.3)
+            element.position.z = random(-2.3, 2.3)
             element.scale.multiplyScalar(1.4)
         } else {
             element.position.x = random(-1, 1, true)
@@ -120,8 +123,15 @@ function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, rotate: boolean 
     }
 }
 
-// load any queued assets
-assets.load({ renderer: webgl.renderer }).then(() => {
+
+function runGame(index = 0) {
+    if (index >= textureKeys.length) {
+        console.log("TODO end scene")
+        return
+    }
+    const textureKey = textureKeys[index]
+
+    webgl.orbitControls.enabled = true
     // show canvas
     webgl.canvas.style.visibility = ''
 
@@ -129,27 +139,10 @@ assets.load({ renderer: webgl.renderer }).then(() => {
     const elements = new THREE.Group()
     const NUM_ELEMENTS = 100
 
-    makeCubes(NUM_ELEMENTS, elements, false)
+    makeCubes(NUM_ELEMENTS, elements, textureKey, false)
 
     webgl.scene.add(elements)
     webgl.camera.lookAt(elements.position)
-
-    // matcher to check if the objects have been aligned
-    const precision = 0.18
-    function compare(left, right) {
-        const xComp = Math.abs(left.x - right.x) <= precision
-        const yComp = Math.abs(left.y - right.y) <= precision
-        const zComp = Math.abs(left.z - right.z) <= precision
-        return xComp && yComp && zComp
-    }
-
-    function xyz(thing) {
-        return {
-            x: thing.x,
-            y: thing.y,
-            z: thing.z,
-        }
-    }
 
     const originalCamera = xyz(webgl.camera.position)
     const initial = xyz(elements.rotation)
@@ -175,7 +168,7 @@ assets.load({ renderer: webgl.renderer }).then(() => {
     let cameraTween
     let spriteTween
     webgl.onUpdate(() => {
-        if (compare(webgl.camera.rotation, initial) && !matched && once) {
+        if (compare(webgl.camera.rotation, initial, 0.18) && !matched && once) {
             matched = true
         }
 
@@ -207,6 +200,14 @@ assets.load({ renderer: webgl.renderer }).then(() => {
                         })
                         .onComplete(function () {
 
+                            elements.children.forEach((mesh: THREE.Mesh) => {
+                                mesh.geometry.dispose()
+                                mesh.material.dispose()
+                            })
+                            webgl.scene.remove(elements)
+                            material.dispose()
+                            webgl.scene.remove( sprite )
+                            runGame(++index)
                         })
                         .start()
                 })
@@ -217,6 +218,11 @@ assets.load({ renderer: webgl.renderer }).then(() => {
             TWEEN.update()
         }
     })
+}
+
+// load any queued assets
+assets.load({ renderer: webgl.renderer }).then(() => {
+    runGame(0)
 
     // add lights
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
@@ -230,3 +236,19 @@ assets.load({ renderer: webgl.renderer }).then(() => {
     webgl.start()
     webgl.draw()
 })
+
+// matcher to check if the objects have been aligned
+function compare(left, right, precision) {
+    const xComp = Math.abs(left.x - right.x) <= precision
+    const yComp = Math.abs(left.y - right.y) <= precision
+    const zComp = Math.abs(left.z - right.z) <= precision
+    return xComp && yComp && zComp
+}
+
+function xyz(thing) {
+    return {
+        x: thing.x,
+        y: thing.y,
+        z: thing.z,
+    }
+}

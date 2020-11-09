@@ -3,6 +3,7 @@
     "sourceMap": true,
     "target": "ES2015",
     "moduleResolution": "Node",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "lib": ["es2015" ,"es2017", "dom"]
   }
 }
