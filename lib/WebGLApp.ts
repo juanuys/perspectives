@@ -66,6 +66,8 @@ export default class WebGLApp {
         // setup a basic camera
         this.camera = new THREE.PerspectiveCamera(fov, 1, near, far)
         // this.camera = new THREE.OrthographicCamera(-2, 2, 2, -2, near, far)
+        // const ortho = 5
+        // this.camera = new THREE.OrthographicCamera(-ortho, ortho, ortho, -ortho, near, far)
         // this.camera.position.set(0, 5, 0)
         // this.camera.position.set(5, 0, 0)
         this.camera.position.set(0, 0, 5)

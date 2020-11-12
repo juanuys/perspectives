@@ -8,6 +8,10 @@ import TWEEN from '@tweenjs/tween.js'
 // import imgs from './assets/*.jpg'
 import imgs from './assets/*.png'
 
+// get parameters from URL
+const url = new URL(window.location.href)
+const whichCamera = url.searchParams.get("c")
+
 // grab our canvas
 const canvas = document.querySelector('#app')
 
@@ -27,57 +31,37 @@ window.webgl = webgl
 // hide canvas
 webgl.canvas.style.visibility = 'hidden'
 
-// preload the texture
-const textureKeys = Object.entries(imgs).map(([key, url]) => {
-    const textureKey = assets.queue({
-        url,
-        type: 'texture',
-    })
-    return textureKey
-})
+// make an orthographic camera for projection
+const ortho = 5
+const orthographicCamera = new THREE.OrthographicCamera(-ortho, ortho, ortho, -ortho, 0.01, 100)
+orthographicCamera.position.set(0, 0, 0)
 
-function makeCones(NUM_ELEMENTS: number, elements: THREE.Group, textureKey) {
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
-        // const geometry = new THREE.IcosahedronGeometry(random(0.1, 0.5))
-        const geometry = new THREE.ConeGeometry(random(0.1, 0.5), random(1, 2), 8)
-        const material = new ProjectedMaterial({
-            // use the scene camera itself
-            camera: webgl.camera,
-            texture: assets.get(textureKey),
-            color: '#000000',
-            textureScale: 0.8,
-        })
-        const element = new THREE.Mesh(geometry, material)
-
-        // move the meshes any way you want!
-        if (i < NUM_ELEMENTS * 0.3) {
-            element.position.x = random(-0.5, 0.5)
-            element.position.y = random(-1.1, 0.5)
-            element.position.z = random(-0.3, 0.3)
-            element.scale.multiplyScalar(1.4)
-        } else {
-            element.position.x = random(-1, 1, true)
-            element.position.y = random(-2, 2, true)
-            element.position.z = random(-0.5, 0.5)
-        }
-        element.rotation.x = random(0, Math.PI * 2)
-        element.rotation.y = random(0, Math.PI * 2)
-        element.rotation.z = random(0, Math.PI * 2)
-
-        // and when you're ready, project the texture!
-        project(element)
-
-        elements.add(element)
-    }
+let camera = webgl.camera
+if (whichCamera === "o") {
+    console.log("using orthographic camera")
+    camera = orthographicCamera
+} else {
+    console.log("using perspective camera")
 }
 
-function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rotate: boolean = true) {
+// preload the texture
+const textureKeys = Object.entries(imgs).map(([key, url]) => {
+    if (key.indexOf("alt") === -1) {
+        const textureKey = assets.queue({
+            url,
+            type: 'texture',
+        })
+        return textureKey
+    }
+}).filter((val) => typeof val !== 'undefined')
+
+function makeShapes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rotate: boolean = true) {
     const cover = false
 
     // optimisation to calculate dimensions once
     const [widthScaled, heightScaled] = computeScaledDimensions(
         assets.get(textureKey),
-        webgl.camera,
+        camera,
         0.8,
         cover
     )
@@ -87,8 +71,7 @@ function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rota
         // const geometry = new THREE.IcosahedronGeometry(random(0.1, 0.5))
         const geometry = new THREE.BoxGeometry(random(0.1, 0.5), random(0.1, 0.5), random(0.1, 0.5))
         const material = new ProjectedMaterial({
-            // use the scene camera itself
-            camera: webgl.camera,
+            camera: camera,
             texture: assets.get(textureKey),
             color: '#000000',
             textureScale: 0.8,
@@ -99,10 +82,14 @@ function makeCubes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rota
 
         // move the meshes any way you want!
         if (i < NUM_ELEMENTS * 0.3) {
-            element.position.x = random(-0.5, 0.5)
-            element.position.y = random(-1.1, 0.5)
+            // element.position.x = random(-0.5, 0.5)
+            // element.position.y = random(-1.1, 0.5)
             // element.position.z = random(-0.3, 0.3)
-            element.position.z = random(-2.3, 2.3)
+
+            // more spread out?
+            element.position.x = random(-1.5, 1.5)
+            element.position.y = random(-1.5, 1.5)
+            element.position.z = random(-1.5, 1.5)
             element.scale.multiplyScalar(1.4)
         } else {
             element.position.x = random(-1, 1, true)
@@ -139,7 +126,7 @@ function runGame(index = 0) {
     const elements = new THREE.Group()
     const NUM_ELEMENTS = 100
 
-    makeCubes(NUM_ELEMENTS, elements, textureKey, false)
+    makeShapes(NUM_ELEMENTS, elements, textureKey, false)
 
     webgl.scene.add(elements)
     webgl.camera.lookAt(elements.position)
@@ -168,7 +155,7 @@ function runGame(index = 0) {
     let cameraTween
     let spriteTween
     webgl.onUpdate(() => {
-        if (compare(webgl.camera.rotation, initial, 0.18) && !matched && once) {
+        if (compare(webgl.camera.rotation, initial, 0.15) && !matched && once) {
             matched = true
         }
 
