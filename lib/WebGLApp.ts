@@ -117,7 +117,7 @@ export default class WebGLApp {
         // set up a simple orbit controller
         if (options.orbitControls) {
             this.orbitControls = new OrbitControls(this.camera, this.canvas)
-            // this.orbitControls.enableDamping = true
+            this.orbitControls.enableDamping = true
             this.orbitControls.minDistance = this.orbitControls.maxDistance = 5
             this.orbitControls.maxAzimuthAngle = 0
             this.orbitControls.minAzimuthAngle = 0

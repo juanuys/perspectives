@@ -8,10 +8,6 @@ import TWEEN from '@tweenjs/tween.js'
 // import imgs from './assets/*.jpg'
 import imgs from './assets/*.png'
 
-// get parameters from URL
-const url = new URL(window.location.href)
-const whichCamera = url.searchParams.get("c")
-
 // grab our canvas
 const canvas = document.querySelector('#app')
 
@@ -32,47 +28,66 @@ window.webgl = webgl
 webgl.canvas.style.visibility = 'hidden'
 
 // make an orthographic camera for projection
-const ortho = 5
+const ortho = 1.5
 const orthographicCamera = new THREE.OrthographicCamera(-ortho, ortho, ortho, -ortho, 0.01, 100)
-orthographicCamera.position.set(0, 0, 0)
+orthographicCamera.position.set(0, 0, 5) // value of z doesn't really matter
 
-let camera = webgl.camera
-if (whichCamera === "o") {
-    console.log("using orthographic camera")
-    camera = orthographicCamera
-} else {
-    console.log("using perspective camera")
-}
+const camera = orthographicCamera
+
 
 // preload the texture
-const textureKeys = Object.entries(imgs).map(([key, url]) => {
-    if (key.indexOf("alt") === -1) {
-        const textureKey = assets.queue({
-            url,
-            type: 'texture',
-        })
-        return textureKey
-    }
-}).filter((val) => typeof val !== 'undefined')
+Object.values(imgs).forEach((url) => {
+    assets.queue({
+        url,
+        type: 'texture',
+    })
+})
 
-function makeShapes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rotate: boolean = true) {
+const mainTextureKeys = Object.keys(imgs).filter((img) => img.indexOf("alt") === -1)
+
+const allTextures = Object.entries(imgs).sort(([lkey, lurl], [rkey, rurl]) => {
+    if (lkey < rkey) {
+        return -1
+    }
+    if (lkey > rkey) {
+        return 1
+    }
+    return 0
+}).reduce((acc, [key, url]) => {
+    if (key.indexOf("alt") === -1) {
+        acc[key] = {
+            main: url,
+            alts: [],
+        }
+    } else {
+        const mainKey = key.substr(0, key.indexOf("_alt"))
+        acc[mainKey].alts.push(url)
+    }
+    return acc
+}, {})
+
+function makeShapes(mainTextureKeys, allTextures, index, count = 100) {
+    const elements = new THREE.Group()
     const cover = false
+    const mainTextureKey = mainTextureKeys[index]
+    const texturesByIndex = allTextures[mainTextureKey]
+    const imgUrl = texturesByIndex.main
 
     // optimisation to calculate dimensions once
     const [widthScaled, heightScaled] = computeScaledDimensions(
-        assets.get(textureKey),
+        assets.get(imgUrl),
         camera,
         0.8,
         cover
     )
     const dimensions = {widthScaled, heightScaled}
 
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
+    for (let i = 0; i < count; i++) {
         // const geometry = new THREE.IcosahedronGeometry(random(0.1, 0.5))
         const geometry = new THREE.BoxGeometry(random(0.1, 0.5), random(0.1, 0.5), random(0.1, 0.5))
         const material = new ProjectedMaterial({
             camera: camera,
-            texture: assets.get(textureKey),
+            texture: assets.get(imgUrl),
             color: '#000000',
             textureScale: 0.8,
             cover,
@@ -80,53 +95,38 @@ function makeShapes(NUM_ELEMENTS: number, elements: THREE.Group, textureKey, rot
         })
         const element = new THREE.Mesh(geometry, material)
 
-        // move the meshes any way you want!
-        if (i < NUM_ELEMENTS * 0.3) {
-            // element.position.x = random(-0.5, 0.5)
-            // element.position.y = random(-1.1, 0.5)
-            // element.position.z = random(-0.3, 0.3)
+        element.position.x = random(-1.5, 1.5)
+        element.position.y = random(-1.5, 1.5)
+        element.position.z = random(-1.5, 1.5)
+        element.scale.multiplyScalar(1.4)
 
-            // more spread out?
-            element.position.x = random(-1.5, 1.5)
-            element.position.y = random(-1.5, 1.5)
-            element.position.z = random(-1.5, 1.5)
-            element.scale.multiplyScalar(1.4)
-        } else {
-            element.position.x = random(-1, 1, true)
-            element.position.y = random(-2, 2, true)
-            element.position.z = random(-0.5, 0.5)
-        }
 
-        if (rotate) {
-            element.rotation.x = random(0, Math.PI * 2)
-            element.rotation.y = random(0, Math.PI * 2)
-            element.rotation.z = random(0, Math.PI * 2)
-        }
+        // element.rotation.x = random(0, Math.PI * 2)
+        // element.rotation.y = random(0, Math.PI * 2)
+        // element.rotation.z = random(0, Math.PI * 2)
+
 
         // and when you're ready, project the texture!
         project(element)
 
         elements.add(element)
     }
+    return elements
 }
 
 
 function runGame(index = 0) {
-    if (index >= textureKeys.length) {
+    if (index >= mainTextureKeys.length) {
         console.log("TODO end scene")
         return
     }
-    const textureKey = textureKeys[index]
 
     webgl.orbitControls.enabled = true
     // show canvas
     webgl.canvas.style.visibility = ''
 
     // create a bunch of meshes
-    const elements = new THREE.Group()
-    const NUM_ELEMENTS = 100
-
-    makeShapes(NUM_ELEMENTS, elements, textureKey, false)
+    const elements = makeShapes(mainTextureKeys, allTextures, index)
 
     webgl.scene.add(elements)
     webgl.camera.lookAt(elements.position)
@@ -142,7 +142,8 @@ function runGame(index = 0) {
     webgl.camera.lookAt(elements.position)
 
     // texture to show when the objects have been aligned
-    const material = new THREE.SpriteMaterial( { map: assets.get(textureKey), color: 0xffffff } )
+    const mainImgUrl = allTextures[mainTextureKeys[index]].main
+    const material = new THREE.SpriteMaterial( { map: assets.get(mainImgUrl), color: 0xffffff } )
     const sprite = new THREE.Sprite( material )
     sprite.position.z = 2
     sprite.scale.set(2,2,1)
@@ -156,7 +157,8 @@ function runGame(index = 0) {
     let spriteTween
     webgl.onUpdate(() => {
         if (compare(webgl.camera.rotation, initial, 0.15) && !matched && once) {
-            matched = true
+            // matched = true
+            console.log("skipping matching...")
         }
 
         // this block runs once
