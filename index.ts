@@ -1,12 +1,13 @@
 import 'regenerator-runtime/runtime'
 import * as THREE from 'three'
-import ProjectedMaterial, { project, computeScaledDimensions } from './lib/ProjectedMaterial'
 import { random } from 'lodash'
 import WebGLApp from './lib/WebGLApp'
 import assets from './lib/AssetManager'
 import TWEEN from '@tweenjs/tween.js'
-// import imgs from './assets/*.jpg'
-import imgs from './assets/*.png'
+import projectionImgs from './assets/projections/*.png'
+import otherImgs from './assets/*.png'
+import {makeShapes} from './lib/util'
+import {playMusic} from './lib/audio'
 
 // grab our canvas
 const canvas = document.querySelector('#app')
@@ -19,7 +20,17 @@ const webgl = new WebGLApp({
     // show the fps counter from stats.js
     showFps: false,
     orbitControls: { distance: 4 },
+    postprocessing: true,
 })
+
+let musicStarted = false
+let stopMusic
+webgl.renderer.domElement.addEventListener("click", () => {
+    if (!musicStarted) {
+        musicStarted = true
+        stopMusic = playMusic()
+    }
+}, true)
 
 // attach it to the window to inspect in the console
 window.webgl = webgl
@@ -36,16 +47,23 @@ const camera = orthographicCamera
 
 
 // preload the texture
-Object.values(imgs).forEach((url) => {
+Object.values(projectionImgs).forEach((url) => {
+    assets.queue({
+        url,
+        type: 'texture',
+    })
+})
+Object.values(otherImgs).forEach((url) => {
     assets.queue({
         url,
         type: 'texture',
     })
 })
 
-const mainTextureKeys = Object.keys(imgs).filter((img) => img.indexOf("alt") === -1)
 
-const allTextures = Object.entries(imgs).sort(([lkey, lurl], [rkey, rurl]) => {
+const mainTextureKeys = Object.keys(projectionImgs).filter((img) => img.indexOf("alt") === -1)
+
+const allTextures = Object.entries(projectionImgs).sort(([lkey, lurl], [rkey, rurl]) => {
     if (lkey < rkey) {
         return -1
     }
@@ -66,147 +84,119 @@ const allTextures = Object.entries(imgs).sort(([lkey, lurl], [rkey, rurl]) => {
     return acc
 }, {})
 
-function makeShapes(mainTextureKeys, allTextures, index, count = 100) {
-    const elements = new THREE.Group()
-    const cover = false
-    const mainTextureKey = mainTextureKeys[index]
-    const texturesByIndex = allTextures[mainTextureKey]
-    const imgUrl = texturesByIndex.main
-
-    // optimisation to calculate dimensions once
-    const [widthScaled, heightScaled] = computeScaledDimensions(
-        assets.get(imgUrl),
-        camera,
-        0.8,
-        cover
-    )
-    const dimensions = {widthScaled, heightScaled}
-
-    for (let i = 0; i < count; i++) {
-        // const geometry = new THREE.IcosahedronGeometry(random(0.1, 0.5))
-        const geometry = new THREE.BoxGeometry(random(0.1, 0.5), random(0.1, 0.5), random(0.1, 0.5))
-        const material = new ProjectedMaterial({
-            camera: camera,
-            texture: assets.get(imgUrl),
-            color: '#000000',
-            textureScale: 0.8,
-            cover,
-            dimensions
-        })
-        const element = new THREE.Mesh(geometry, material)
-
-        element.position.x = random(-1.5, 1.5)
-        element.position.y = random(-1.5, 1.5)
-        element.position.z = random(-1.5, 1.5)
-        element.scale.multiplyScalar(1.4)
-
-
-        // element.rotation.x = random(0, Math.PI * 2)
-        // element.rotation.y = random(0, Math.PI * 2)
-        // element.rotation.z = random(0, Math.PI * 2)
-
-
-        // and when you're ready, project the texture!
-        project(element)
-
-        elements.add(element)
-    }
-    return elements
-}
-
-
 function runGame(index = 0) {
     if (index >= mainTextureKeys.length) {
-        console.log("TODO end scene")
-        return
-    }
+        stopMusic()
 
-    webgl.orbitControls.enabled = true
-    // show canvas
-    webgl.canvas.style.visibility = ''
+        // show final image
+        const materialFull = new THREE.SpriteMaterial( { map: assets.get(otherImgs.full)} )
+        const spriteFull = new THREE.Sprite( materialFull )
+        spriteFull.position.z = 1.9
+        const w = 1536
+        const h = 1024
+        const aspect = w / h
+        spriteFull.scale.set(aspect * 4, 4, 1)
+        webgl.scene.add( spriteFull )
+        webgl.canvas.style.visibility = ''
+    } else {
+        webgl.orbitControls.enabled = true
+        // show canvas
+        webgl.canvas.style.visibility = ''
 
-    // create a bunch of meshes
-    const elements = makeShapes(mainTextureKeys, allTextures, index)
+        // create a bunch of meshes
+        const elements = makeShapes(camera, mainTextureKeys, allTextures, index)
 
-    webgl.scene.add(elements)
-    webgl.camera.lookAt(elements.position)
+        webgl.scene.add(elements)
+        webgl.camera.lookAt(elements.position)
 
-    const originalCamera = xyz(webgl.camera.position)
-    const initial = xyz(elements.rotation)
+        const originalCamera = xyz(webgl.camera.position)
+        const initial = xyz(elements.rotation)
 
-    // move camera to random position outside the group
-    const randomAngle = random(0, Math.PI * 2)
-    const randomCameraX = 5 * Math.cos(randomAngle)
-    const randomCameraY = 5 * Math.sin(randomAngle)
-    webgl.camera.position.set(randomCameraX, randomCameraY, 0)
-    webgl.camera.lookAt(elements.position)
+        // move camera to random position outside the group
+        const randomAngle = random(0, Math.PI * 2)
+        const randomCameraX = 5 * Math.cos(randomAngle)
+        const randomCameraY = 5 * Math.sin(randomAngle)
+        webgl.camera.position.set(randomCameraX, randomCameraY, 0)
+        webgl.camera.lookAt(elements.position)
 
-    // texture to show when the objects have been aligned
-    const mainImgUrl = allTextures[mainTextureKeys[index]].main
-    const material = new THREE.SpriteMaterial( { map: assets.get(mainImgUrl), color: 0xffffff } )
-    const sprite = new THREE.Sprite( material )
-    sprite.position.z = 2
-    sprite.scale.set(2,2,1)
-    material.transparent = true
-    let opacity = 0
-    material.opacity = opacity
+        // texture to show when the objects have been aligned
+        const mainImgUrl = allTextures[mainTextureKeys[index]].main
+        const material = new THREE.SpriteMaterial( { map: assets.get(mainImgUrl)} )
+        const sprite = new THREE.Sprite( material )
+        sprite.position.z = 2
+        var sc = 2.47
+        sprite.scale.set(sc, sc, sc)
+        material.transparent = true
+        let opacity = 0
+        material.opacity = opacity
 
-    let once = true
-    let matched = false
-    let cameraTween
-    let spriteTween
-    webgl.onUpdate(() => {
-        if (compare(webgl.camera.rotation, initial, 0.15) && !matched && once) {
-            // matched = true
-            console.log("skipping matching...")
-        }
+        // sprite to black out artifacts
+        // otherImgs
+        const materialBlack = new THREE.SpriteMaterial( { map: assets.get(otherImgs.black)} )
+        const spriteBlack = new THREE.Sprite( materialBlack )
+        spriteBlack.position.z = 1.9
+        spriteBlack.scale.set(10, 10, 10)
 
-        // this block runs once
-        if (matched && once) {
-            once = false
-            webgl.orbitControls.enabled = false
+        let once = true
+        let matched = false
+        let cameraTween
+        let spriteTween
+        webgl.onUpdate(() => {
+            if (compare(webgl.camera.rotation, initial, 0.15) && !matched && once) {
+                matched = true
+            }
 
-            const from = xyz(webgl.camera.position)
+            // this block runs once
+            if (matched && once) {
+                once = false
+                webgl.orbitControls.enabled = false
 
-            // fade in the solution image
-            cameraTween = new TWEEN.Tween(from)
-                .to(originalCamera,600)
-                .easing(TWEEN.Easing.Quadratic.InOut)
-                .onUpdate(function () {
-                    webgl.camera.position.set(from.x, from.y, from.z)
-                    webgl.camera.lookAt(elements.position)
-                })
-                .onComplete(function () {
-                    webgl.camera.lookAt(elements.position)
+                const from = xyz(webgl.camera.position)
 
-                    webgl.scene.add( sprite )
-                    spriteTween = new TWEEN.Tween({opacity})
-                        .to({opacity: 1},2000)
-                        .easing(TWEEN.Easing.Quadratic.InOut)
-                        .onUpdate(function (it) {
-                            // sprite.scale.set(spriteInitialScale.x,spriteInitialScale.y,1)
-                            material.opacity = it.opacity
-                        })
-                        .onComplete(function () {
+                // fade in the solution image
+                cameraTween = new TWEEN.Tween(from)
+                    .to(originalCamera,600)
+                    .easing(TWEEN.Easing.Quadratic.InOut)
+                    .onUpdate(function () {
+                        webgl.camera.position.set(from.x, from.y, from.z)
+                        webgl.camera.lookAt(elements.position)
+                    })
+                    .onComplete(function () {
+                        webgl.camera.lookAt(elements.position)
 
-                            elements.children.forEach((mesh: THREE.Mesh) => {
-                                mesh.geometry.dispose()
-                                mesh.material.dispose()
+                        webgl.scene.add( sprite )
+                        webgl.scene.add( spriteBlack )
+                        spriteTween = new TWEEN.Tween({opacity})
+                            .to({opacity: 1},3400)
+                            .easing(TWEEN.Easing.Exponential.Out)
+                            .onUpdate(function (it) {
+                                // sprite.scale.set(spriteInitialScale.x,spriteInitialScale.y,1)
+                                material.opacity = it.opacity
                             })
-                            webgl.scene.remove(elements)
-                            material.dispose()
-                            webgl.scene.remove( sprite )
-                            runGame(++index)
-                        })
-                        .start()
-                })
-                .start()
+                            .onComplete(function () {
 
-        }
-        if (matched && !once) {
-            TWEEN.update()
-        }
-    })
+                                elements.children.forEach((mesh: THREE.Mesh) => {
+                                    mesh.geometry.dispose()
+                                    mesh.material.dispose()
+                                })
+                                webgl.scene.remove(elements)
+                                material.dispose()
+                                webgl.scene.remove( sprite )
+                                webgl.scene.remove( spriteBlack )
+                                webgl.orbitControls.reset()
+                                runGame(++index)
+                                playMusic(index)
+                            })
+                            .start()
+                    })
+                    .start()
+
+            }
+            if (matched && !once) {
+                TWEEN.update()
+            }
+        })
+    }
 }
 
 // load any queued assets

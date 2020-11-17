@@ -38,6 +38,7 @@
     "stats.js": "^0.17.0",
     "three": "^0.122.0",
     "three-pmrem": "^1.0.0",
+    "tone": "^14.7.58",
     "touches": "^1.2.2"
   },
   "browserslist": [

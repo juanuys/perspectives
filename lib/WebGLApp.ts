@@ -8,6 +8,14 @@ import State from 'controls-state'
 import wrapGUI from 'controls-gui'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
+// import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass'
+import {GlitchPass} from "./GlitchPass"
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass'
+import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader'
+import { HalftonePass } from 'three/examples/jsm/postprocessing/HalftonePass'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
+
+const frustumSize = 5
 
 export default class WebGLApp {
     #updateListeners = []
@@ -64,13 +72,13 @@ export default class WebGLApp {
         this.maxDeltaTime = options.maxDeltaTime || 1 / 30
 
         // setup a basic camera
-        this.camera = new THREE.PerspectiveCamera(fov, 1, near, far)
-        // this.camera = new THREE.OrthographicCamera(-2, 2, 2, -2, near, far)
-        // const ortho = 5
-        // this.camera = new THREE.OrthographicCamera(-ortho, ortho, ortho, -ortho, near, far)
-        // this.camera.position.set(0, 5, 0)
-        // this.camera.position.set(5, 0, 0)
+        // this.camera = new THREE.PerspectiveCamera(fov, 1, near, far)
+
+
+        const aspect = window.innerWidth / window.innerHeight
+        this.camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, near, far)
         this.camera.position.set(0, 0, 5)
+        // this.camera.zoom = 2
 
         this.scene = new THREE.Scene()
 
@@ -112,6 +120,35 @@ export default class WebGLApp {
         if (options.postprocessing) {
             this.composer = new EffectComposer(this.renderer)
             this.composer.addPass(new RenderPass(this.scene, this.camera))
+
+            // half-tone pass not looking great with grayscale images
+            // this.composer.addPass(new HalftonePass( window.innerWidth, window.innerHeight, {
+            //     shape: 1,
+            //     radius: 4,
+            //     rotateR: Math.PI / 12,
+            //     rotateB: Math.PI / 12 * 2,
+            //     rotateG: Math.PI / 12 * 3,
+            //     scatter: 0,
+            //     blending: 1,
+            //     blendingMode: 1,
+            //     greyscale: false,
+            //     disable: false
+            // }))
+
+            const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
+            const params = {
+                exposure: 1,
+                bloomStrength: 0.4,
+                bloomThreshold: 0,
+                bloomRadius: 0
+            };
+            bloomPass.threshold = params.bloomThreshold;
+            bloomPass.strength = params.bloomStrength;
+            bloomPass.radius = params.bloomRadius;
+            this.composer.addPass(bloomPass)
+
+            this.composer.addPass(new ShaderPass(LuminosityShader))
+            this.composer.addPass(new GlitchPass())
         }
 
         // set up a simple orbit controller
@@ -161,6 +198,12 @@ export default class WebGLApp {
         this.renderer.setSize(width, height)
         if (this.camera.isPerspectiveCamera) {
             this.camera.aspect = width / height
+        } else {
+            var aspect = width / height
+            this.camera.left = frustumSize * aspect / - 2;
+            this.camera.right = frustumSize * aspect / 2;
+            this.camera.top = frustumSize / 2;
+            this.camera.bottom = - frustumSize / 2;
         }
         this.camera.updateProjectionMatrix()
 
