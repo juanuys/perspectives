@@ -98,6 +98,7 @@ function runGame(index = 0) {
         spriteFull.scale.set(aspect * 4, 4, 1)
         webgl.scene.add( spriteFull )
         webgl.canvas.style.visibility = ''
+        webgl.orbitControls.enabled = true
     } else {
         webgl.orbitControls.enabled = true
         // show canvas
@@ -139,9 +140,11 @@ function runGame(index = 0) {
 
         let once = true
         let matched = false
+        let blocksTween
         let cameraTween
         let spriteTween
-        webgl.onUpdate(() => {
+
+        const mainUpdateFn = () => {
             if (compare(webgl.camera.rotation, initial, 0.15) && !matched && once) {
                 matched = true
             }
@@ -195,7 +198,52 @@ function runGame(index = 0) {
             if (matched && !once) {
                 TWEEN.update()
             }
-        })
+        }
+
+        let boxesOrigPosition = xyz(elements.position.clone())
+        let boxesOrigRotation = xyz(elements.rotation.clone())
+        let boxesOrig = {
+            ...boxesOrigPosition,
+            xr: boxesOrigRotation.x,
+            yr: boxesOrigRotation.y,
+            zr: boxesOrigRotation.z,
+        }
+        elements.position.setX(Math.random() * (Math.random() < 0.5 ? 10 : -10))
+        elements.position.setY(Math.random() * (Math.random() < 0.5 ? 10 : -10))
+        elements.position.setZ(Math.random() * (Math.random() < 0.5 ? 10 : -10))
+        elements.rotation.set(random(0, Math.PI * 2), random(0, Math.PI * 2), random(0, Math.PI * 2))
+        let boxesNewPosition = xyz(elements.position.clone())
+        let boxesNewRotation = xyz(elements.rotation.clone())
+        let boxesNew = {
+            ...boxesNewPosition,
+            xr: boxesNewRotation.x,
+            yr: boxesNewRotation.y,
+            zr: boxesNewRotation.z,
+        }
+
+        let boxesMoved = false
+        const blocksMoveUpdateFn = () => {
+            if (!boxesMoved) {
+                boxesMoved = true
+                blocksTween = new TWEEN.Tween({...boxesNew})
+                    .to({...boxesOrig},1000)
+                    .easing(TWEEN.Easing.Exponential.Out)
+                    .onUpdate(function (it) {
+                        elements.position.setX(it.x)
+                        elements.position.setY(it.y)
+                        elements.position.setZ(it.z)
+                        elements.rotation.set(it.xr, it.yr, it.zr)
+                    })
+                    .onComplete(function () {
+                        webgl.setUpdate(mainUpdateFn)
+                        blocksTween.stop()
+                    })
+                    .start()
+            }
+            TWEEN.update()
+        }
+
+        webgl.setUpdate(blocksMoveUpdateFn)
     }
 }
 

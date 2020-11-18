@@ -279,6 +279,10 @@ export default class WebGLApp {
         return this
     }
 
+    setUpdate(fn) {
+        this.#updateListeners = [fn]
+    }
+
     onUpdate(fn) {
         this.#updateListeners.push(fn)
     }

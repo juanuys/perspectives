@@ -113,6 +113,7 @@ export function playMusic(level_ = 0) {
             attack: 0.1
         }
     }).toDestination();
+    plucky.volume.value = -8;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
         oscillator: {
@@ -172,10 +173,20 @@ export function playMusic(level_ = 0) {
             const melodyNotes3 = Object.values(allMelodyNotes3)[noteCounter]
             // const notes = _.sample(Object.values(chordNotes))
 
+            if (level == 0) {
+                chordNotes.forEach((note, idx) => {
+                    synth.triggerAttackRelease(note, "8n", t)
+                })
+            } else {
+                chordNotes.forEach((note, idx) => {
+                    if (idx > 1) {
+                        synth.triggerAttackRelease(note, "8n", t + 0.25)
+                    } else {
+                        synth.triggerAttackRelease(note, "8n", t)
+                    }
+                })
+            }
 
-            chordNotes.forEach((note, idx) => {
-                synth.triggerAttackRelease(note, "8n", t)
-            })
             if (level >= 1) {
                 plucky.triggerAttackRelease(_.sample(melodyNotes), "32n", t + 0.5)
             }
